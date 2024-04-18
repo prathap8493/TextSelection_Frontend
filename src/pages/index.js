@@ -38,7 +38,7 @@ const Home = () => {
     const text = editor.state.doc.textBetween(from, to, '\n');
 
     try {
-      const response = await fetch('http://localhost:8000/PostText', {
+      const response = await fetch('https://textselection-backend-5.onrender.com/PostText', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,7 +77,7 @@ const Home = () => {
         const data={
           text:text
         }
-        const res = await axios.post('http://localhost:8000/rephrase',data);
+        const res = await axios.post('https://textselection-backend-5.onrender.com/rephrase',data);
         if(res?.data?.status == "success" ){
           const parsedData = JSON.parse(res.data.data);  
                     setRephraseData(parsedData);
