@@ -83,16 +83,30 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-}
-
-body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
+  -webkit-font-smoothing: antialiased;
+  /* background: linear-gradient(
       to bottom,
       transparent,
       rgb(var(--background-end-rgb))
     )
-    rgb(var(--background-start-rgb));
+    rgb(var(--background-start-rgb)); */
+  --dot-bg: black;
+  --dot-color: rgba(255, 255, 255, 0.39);
+  --dot-size: 1px;
+  --dot-space: 22px;
+  background: linear-gradient(
+        90deg,
+        var(--dot-bg) calc(var(--dot-space) - var(--dot-size)),
+        transparent 1%
+      )
+      center / var(--dot-space) var(--dot-space),
+    linear-gradient(
+        var(--dot-bg) calc(var(--dot-space) - var(--dot-size)),
+        transparent 1%
+      )
+      center / var(--dot-space) var(--dot-space),
+    var(--dot-color);
 }
 
 a {
@@ -144,4 +158,27 @@ a {
 
 .menu-button:hover {
   background-color: #e2e2e2;
+}
+
+/* styles/globals.css */
+.error {
+  color: red;
+  border-bottom: 1px dotted red;
+}
+
+.error:hover::after {
+  content: attr(title);
+  position: absolute;
+  background: #fff;
+  padding: 4px;
+  border: 1px solid #ccc;
+  z-index: 20;
+}
+
+.ql-container.ql-snow{
+  border:none !important;
+}
+
+.ql-editor p{
+  font-size: 16px !important;
 }
