@@ -5,7 +5,7 @@ export const verifyTextService = async(text) =>{
         const data={
             text:text
         }
-        const res = await axios.post("http://localhost:8000/validate",data)
+        const res = await axios.post("https://textselection-backend-5.onrender.com/validate",data)
         return res?.data;
     }
     catch(error){
