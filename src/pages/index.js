@@ -155,14 +155,22 @@ function Playground() {
     }
   }, [sentences]);
 
+  const [isEditorLoaded,setIsEditorLoaded] = useState(false)
   useEffect(() => {
     focusEditor();
   }, []);
 
   function focusEditor() {
     editor?.current?.focus();
+    setIsEditorLoaded(true)
   }
 
+  useEffect(()=>{
+    if(isEditorLoaded){
+      handleClear();
+      setIsEditorLoaded(false)
+    }
+  })
   const onEditorTextChange = async (e) => {
     const blocks = convertToRaw(e.getCurrentContent()).blocks;
     const value = blocks
