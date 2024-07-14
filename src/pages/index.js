@@ -12,8 +12,8 @@ import {
   Portal,
   useDisclosure,
 } from "@chakra-ui/react";
-import { BiCopy } from "react-icons/bi";
-import { MdDelete, MdDeleteOutline } from "react-icons/md";
+import { BiBookmark, BiCopy } from "react-icons/bi";
+import { MdBookmarkAdded, MdDelete, MdDeleteOutline } from "react-icons/md";
 import { Card, CardHeader, CardBody, CardFooter } from "@chakra-ui/react";
 import {
   Editor,
@@ -22,8 +22,8 @@ import {
   convertToRaw,
   ContentState,
   RichUtils,
-  Modifier, // Import Modifier
-  SelectionState, // Import SelectionState
+  Modifier, 
+  SelectionState, 
 } from "draft-js";
 import Tippy from "@tippyjs/react";
 import { Tabs, TabList, TabPanels, Tab, TabPanel } from "@chakra-ui/react";
@@ -35,7 +35,7 @@ import {
   faRedoAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import "draft-js/dist/Draft.css";
-import { verifyTextService } from "@/services/api";
+import { SaveUserTextService, verifyTextService } from "@/services/api";
 import axios from "axios";
 import {
   Modal,
@@ -46,6 +46,9 @@ import {
   ModalBody,
   ModalCloseButton,
 } from "@chakra-ui/react";
+import Header from "@/components/Header";
+import logo from "@/assets/new_logo.png"
+import { api_url, website_url } from "@/config/config";
 
 const Decorated = ({ children, rule }) => {
   return (
@@ -74,7 +77,6 @@ function findWithRegex(words, contentBlock, callback) {
     return;
   }
   words.forEach((word) => {
-    // Escape special characters in the word and create a regular expression pattern.
     const escapedWord = RegExp.escape(word);
     const pattern = new RegExp(escapedWord, "g");
 
@@ -131,6 +133,7 @@ function Playground() {
 
   const [verifyButtonLoading,setVerifyButtonLoading] = useState(false)
   const [debugButtonLoading,setDebugButtonLoading] = useState(false)
+  const [showBookMark,setShowBookMark] = useState(null)
 
   const [buttonPosition, setButtonPosition] = useState({
     x: 0,
@@ -221,7 +224,7 @@ function Playground() {
       const res = await verifyTextService(content);
 
       if (res.status === "success" && res.data.analysis.length > 0) {
-        onOpen();
+        setShowBookMark(true)
         setAiResult(res.data.analysis);
         const wordsToHighlight = res.data.analysis.map((item) => ({
           original: item.original,
@@ -269,7 +272,6 @@ function Playground() {
       const text = block.getText();
       const startIndex = text.indexOf(original);
 
-      // Replace text if the original string is found
       if (startIndex !== -1) {
         const selectionState = SelectionState.createEmpty(key).merge({
           anchorOffset: startIndex,
@@ -285,7 +287,6 @@ function Playground() {
     });
 
     if (newContentState !== currentContent) {
-      // Update the editor state only if changes have been made
       const newEditorState = EditorState.push(
         editorState,
         newContentState,
@@ -342,7 +343,7 @@ function Playground() {
 
     try {
       const response = await fetch(
-        "https://textselection-backend-5.onrender.com/PostText",
+        `${api_url}/PostText`,
         {
           method: "POST",
           headers: {
@@ -393,7 +394,7 @@ function Playground() {
 
       const data = { text: text };
       const res = await axios.post(
-        "https://textselection-backend-5.onrender.com/rephrase",
+        `${api_url}/rephrase`,
         data
       );
 
@@ -401,6 +402,7 @@ function Playground() {
         const parsedData = JSON.parse(res.data.data);
         setRephraseData(parsedData);
         setVerifyButtonLoading(false)
+        onOpen();
         toast({
           title: "Success",
           description: "We have generated different versions for you!",
@@ -444,16 +446,13 @@ function Playground() {
     getContent("");
     setCharacterLength(0);
     setEditorState(editorstate);
-    // setAiResult([]);
     setSentences([]);
   };
 
   const handleCopy = () => {
     if (content.length > 1) {
       navigator.clipboard.writeText(content);
-      // toast.success("Copied to clipboard", { duration: 1500 });
     } else {
-      // toast.error("No content to copy", { duration: 1300 });
     }
   };
 
@@ -463,7 +462,7 @@ function Playground() {
   };
   
   const handleVersionData = () => {
-    const text = rephraseData[tabIndex]; // Assuming rephraseData is correctly populated
+    const text = rephraseData[tabIndex]; 
     if (text) {
       navigator.clipboard.writeText(text);
       toast({
@@ -476,6 +475,18 @@ function Playground() {
     }
   };
   
+  const handleSaveData = async() =>{
+    try{
+      const res = await SaveUserTextService(content);
+      if(res?.status){
+        console.log("helo")
+        setShowBookMark(false)
+      }
+    }
+    catch(err){
+
+    }
+  }
 
   console.log(buttonPosition, "sdkajsd");
   return (
@@ -491,102 +502,56 @@ function Playground() {
           <ModalCloseButton color={"black"} />
           <ModalBody pb={6}>
             <Box display="flex" pt="2" h="80vh" mr={5}>
-              <Box
-                flex="6"
-                bg="gray.50"
-                p={4}
-                borderRight="1px"
-                boxShadow={"md"}
-                borderColor="gray.200"
-                color={"black"}
-              >
-                <Editor
-                  ref={editor}
-                  editorState={editorState}
-                  onChange={onEditorTextChange}
-                  handlePastedText={handlePastedText}
-                  placeholder="Type here..."
-                  style={{ height: "100%" }}
-                  readOnly
-                />
-              </Box>
               <Box flex="4">
-                <Box spacing={4} p={4} overflowY="auto" h="100%">
-                  {aiResult ? (
-                    aiResult.map((item, index) => (
-                      <Card
-                        key={index}
-                        bg="white"
-                        border="1px solid"
-                        borderColor="gray.200"
-                        boxShadow="md"
-                        p={4}
-                        borderRadius="md"
-                        mt={1}
-                        color={"black"}
-                      >
-                        <CardBody>
-                          <Text fontSize="sm" mb="2">
-                            <strong>Original:</strong> {item.original}
-                          </Text>
-                          <Text fontSize="sm">
-                            <strong>Corrected:</strong> {item.corrected}
-                          </Text>
-                          <Text fontSize="sm">
-                            <strong>Rule Violated:</strong> {item.rule}
-                          </Text>
-                          <Text fontSize="sm" mt="1">
-                            <strong>Example:</strong>
-                          </Text>
-                          <Text fontSize="sm">
-                            <strong>Incorrect:</strong> {item.example.incorrect}
-                          </Text>
-                          <Text fontSize="sm">
-                            <strong>Correct:</strong>
-                            {item.example.correct}
-                          </Text>
-                          <ChakraTooltip
-                            label={"Replace the errored text with correct text"}
-                            bg={"black"}
-                            color={"white"}
-                            borderRadius={"4px"}
-                          >
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                handleReplace(item.original, item.corrected)
-                              }
-                              mb="2"
-                              color={"white"}
-                              cursor={"pointer"}
-                              bg="#5BBCFF"
-                              _hover={"blue"}
-                              mt={1}
-                            >
-                              Replace
-                            </Button>
-                          </ChakraTooltip>
-                        </CardBody>
-                      </Card>
-                    ))
-                  ) : (
-                    <Text fontSize="sm">
-                      No corrections to display or analysis is pending.
+                <Tabs variant="enclosed" colorScheme="blue" index={tabIndex} onChange={(index) => handleTabChange(index)}>
+                <TabList>
+                  <Tab>
+                    <Text fontWeight={"semiBold"} fontSize={"18px"}>
+                      Version 1
                     </Text>
-                  )}
-                </Box>
+                  </Tab>
+                  <Tab>
+                    <Text fontWeight={"semiBold"} fontSize={"18px"}>
+                      Version 2
+                    </Text>
+                  </Tab>
+                  <Tab>
+                    <Text fontWeight={"semiBold"} fontSize={"18px"}>
+                      Version 3
+                    </Text>
+                  </Tab>
+                </TabList>
+                <TabPanels>
+                  <TabPanel>
+                    <Text>{rephraseData[0] || "No data"}</Text>
+                  </TabPanel>
+                  <TabPanel>
+                    <Text>{rephraseData[1] || "No data"}</Text>
+                  </TabPanel>
+                  <TabPanel>
+                    <Text>{rephraseData[2] || "No data"}</Text>
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
               </Box>
             </Box>
           </ModalBody>
         </ModalContent>
       </Modal>
-      <Box mt="60px" width={"100%"} display={"flex"} h="70vh">
+      <Box mt="20px" width={"100%"} >
+        <Header/>
+        <Box borderRight={"2px solid gray"} mt="12px">
+          <Heading as={"h1"} fontSize={"32px"} textAlign={"center"} color={"#1A1A1A"}>Perfect Your Prose: Advanced Grammar Correction Technology</Heading>
+          <Text fontSize={"16px"} fontWeight={400} textAlign={"center"} w={"80%"} mx={"auto"} mt="2" color={"#475467"}>Unleash the power of cutting-edge technology to refine your writing. Our advanced grammar correction tool scans your text with precision, ensuring every sentence is polished to perfection. Whether you're drafting an email, essay, or report, rely on our solution to deliver clear, error-free communication.</Text>
+        </Box>
+        <Box display={"flex"} mt="4">
         <Box
-          width={"50%"}
+          width={"60%"}
           display={"flex"}
           flexDir="column"
           alignItems={"flex-end"}
         >
+
           <Box
             w="90%"
             bg="white"
@@ -594,26 +559,26 @@ function Playground() {
             mt="3"
             borderWidth="1px"
             borderRadius="lg"
-            borderRightRadius={"none"}
             overflow="hidden"
             p={4}
+            boxShadow={"1px 1px 6px #00000033"}
           >
             <Box
               bg="white"
-              h="60vh"
+              h="405px"
               w="100%"
               ref={editorRef}
               overflowY={"scroll"}
               sx={{
                 "&::-webkit-scrollbar": {
-                  display: "none", // for Chrome, Safari, Opera
+                  display: "none", 
                 },
-                scrollbarWidth: "none", // for Firefox
-                "-ms-overflow-style": "none", // for Internet Explorer and Edge
+                scrollbarWidth: "none", 
+                "-ms-overflow-style": "none", 
               }}
             >
               <Box display={"flex"} justifyContent={"flex-end"} mb={1}>
-                {aiResult?.length && (
+                {rephraseData[0] && (
                   <Text
                     onClick={onOpen}
                     cursor="pointer"
@@ -621,9 +586,18 @@ function Playground() {
                     fontSize={"14px"}
                     fontWeight={"500"}
                   >
-                    Correct Your Errors Here!
+                    Check Your versions here!
                   </Text>
                 )}
+
+                {showBookMark &&
+                  <BiBookmark onClick={handleSaveData} style={{cursor:"pointer"}}/> 
+                  }
+                  {
+                    showBookMark === false && <MdBookmarkAdded style={{cursor:"pointer"}}/>
+                  }
+                  
+
               </Box>
               <Editor
                 ref={editor}
@@ -658,22 +632,22 @@ function Playground() {
                             _hover={{ bg: "gray.100" }}
                             color={
                               action === "correct"
-                                ? "#2f855a" // Green, for success/correction
+                                ? "#2f855a" 
                                 : action === "elaborate"
-                                ? "#d69e2e" // Yellow, for caution/need more
+                                ? "#d69e2e" 
                                 : action === "shorten"
-                                ? "#3182ce" // Blue, for informational/condense
-                                : "#9b2c2c" // Red, for attention/rewrite
+                                ? "#3182ce" 
+                                : "#9b2c2c" 
                             }
                             border="1px solid"
                             borderColor={
                               action === "correct"
-                                ? "#2f855a" // Green border
+                                ? "#2f855a" 
                                 : action === "elaborate"
-                                ? "#d69e2e" // Yellow border
+                                ? "#d69e2e" 
                                 : action === "shorten"
-                                ? "#3182ce" // Blue border
-                                : "#9b2c2c" // Red border
+                                ? "#3182ce" 
+                                : "#9b2c2c" 
                             }
                           >
                             {action === "correct" && (
@@ -709,7 +683,6 @@ function Playground() {
               display={"flex"}
               width={"100%"}
               justifyContent={"space-between"}
-              mt={"15px"}
             >
               <Box display={"flex"}>
                 <Text mr="5">Character Length: {characterLength}</Text>
@@ -738,100 +711,12 @@ function Playground() {
               </Box>
             </Box>
           </Box>
-        </Box>
-        <Box
-          width={"50%"}
-          display={"flex"}
-          flexDir="column"
-          alignItems={"flex-start"}
-          h="100%"
-        >
           <Box
-            w="90%"
-            bg="white"
-            color={"black"}
-            mt="3"
-            borderWidth="1px"
-            borderRadius="lg"
-            borderLeftRadius={"none"}
-            overflow="hidden"
-            p={4}
-          >
-            <Box bg="white" w="90%" h="60vh">
-              <Tabs variant="enclosed" colorScheme="blue" index={tabIndex} onChange={(index) => handleTabChange(index)}>
-                <TabList>
-                  <Tab>
-                    <Text fontWeight={"semiBold"} fontSize={"18px"}>
-                      Version 1
-                    </Text>
-                  </Tab>
-                  <Tab>
-                    <Text fontWeight={"semiBold"} fontSize={"18px"}>
-                      Version 2
-                    </Text>
-                  </Tab>
-                  <Tab>
-                    <Text fontWeight={"semiBold"} fontSize={"18px"}>
-                      Version 3
-                    </Text>
-                  </Tab>
-                </TabList>
-                <TabPanels>
-                  <TabPanel>
-                    <Text>{rephraseData[0] || "No data"}</Text>
-                  </TabPanel>
-                  <TabPanel>
-                    <Text>{rephraseData[1] || "No data"}</Text>
-                  </TabPanel>
-                  <TabPanel>
-                    <Text>{rephraseData[2] || "No data"}</Text>
-                  </TabPanel>
-                </TabPanels>
-              </Tabs>
-            </Box>
-            <Box
-              display={"flex"}
-              width={"100%"}
-              justifyContent={"space-between"}
-              mt={"15px"}
-            >
-              <Box display={"none"}>
-                <Text mr="5">Character Length: {characterLength}</Text>
-                <Text>Word Count: {wordCount}</Text>
-              </Box>
-              <Box
-                  display={"flex"}
-                  alignItems={"center"}
-                  cursor={"pointer"}
-                  onClick={handleCopy}
-                >
-                  <Text ml="1" >
-                    
-                  </Text>
-                </Box>
-              <Box display={"flex"}>
-                <Box
-                  alignItems={"center"}
-                  mr="5"
-                  cursor={"pointer"}
-                  display={"flex"}
-                  onClick={handleVersionData}
-                >
-                  <BiCopy />
-                  <Text ml="1">Copy</Text>
-                </Box>
-               
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-      </Box>
-      <Box
         display={"flex"}
         width={"95%"}
-        mt={1}
-        mr={3}
+        mt={3}
         justifyContent={"flex-end"}
+        
       >
         <Button
           onClick={verifyText}
@@ -845,6 +730,95 @@ function Playground() {
         <Button colorScheme="blue" onClick={handleGenerateSampleTexts} ml={2} isLoading={verifyButtonLoading}>
           Generate
         </Button>
+      </Box>
+        </Box>
+        <Box
+          width={"30%"}
+          display={"flex"}
+          flexDir="column"
+          alignItems={"flex-start"}
+          h="475px"
+          ml="50px"
+        >
+          <Box
+            w="100%"
+            h="100%"
+            bg="white"
+            color={"black"}
+            mt="3"
+            borderRadius="lg"
+            borderLeftRadius={"none"}
+            overflow="hidden"
+            boxShadow={"1px 1px 6px #00000033"}
+          >
+            <Box bg="white" w="100%" h="60vh" >
+            
+            <Box spacing={4} px="4" py="1" overflowY="auto" h="100%" >
+                  {aiResult ? (
+                    aiResult.map((item, index) => (
+                      <Card
+                        key={index}
+                        bg="gray.100"
+                        border="1px solid"
+                        borderColor="gray.200"
+                        boxShadow="md"
+                        borderRadius="md"
+                        mt={2}
+                        color={"black"}
+                      >
+                        <CardBody>
+                          <Text fontSize="sm" mb="2">
+                            <strong>Original:</strong> {item?.original}
+                          </Text>
+                          <Text fontSize="sm">
+                            <strong>Corrected:</strong> {item?.corrected}
+                          </Text>
+                          <Text fontSize="sm" mt="2">
+                            <strong>Rule Violated:</strong> {item?.rule}
+                          </Text>
+                          <Text fontSize="sm" mt="2">
+                            <strong>Example:</strong>
+                          </Text>
+                          <Text fontSize="sm">
+                            <strong>Incorrect:</strong> {item?.example?.incorrect}
+                          </Text>
+                          <Text fontSize="sm">
+                            <strong>Correct:</strong>
+                            {item?.example?.correct}
+                          </Text>
+                          <ChakraTooltip
+                            label={"Replace the errored text with correct text"}
+                            bg={"black"}
+                            color={"white"}
+                            borderRadius={"4px"}
+                          >
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                handleReplace(item?.original, item?.corrected)
+                              }
+                              color={"white"}
+                              cursor={"pointer"}
+                              bg="#5BBCFF"
+                              _hover={"blue"}
+                              mt={4}
+                            >
+                              Replace
+                            </Button>
+                          </ChakraTooltip>
+                        </CardBody>
+                      </Card>
+                    ))
+                  ) : (
+                    <Text fontSize="sm">
+                      No corrections to display or analysis is pending.
+                    </Text>
+                  )}
+                </Box>
+            </Box>
+          </Box>
+        </Box>
+        </Box>
       </Box>
     </>
   );
